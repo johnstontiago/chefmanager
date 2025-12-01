@@ -1091,9 +1091,9 @@ function RecipeViewer({ recipe, recipes, onEdit, onSelectRecipe }) {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
             <div className="lg:col-span-1">
-              <div className="sticky top-28 rounded-2xl p-6" style={{ background: 'linear-gradient(135deg, rgba(196, 87, 42, 0.08) 0%, rgba(196, 87, 42, 0.03) 100%)' }}>
+              <div className="sticky top-28 rounded-2xl py-6 px-5" style={{ background: 'linear-gradient(135deg, rgba(196, 87, 42, 0.08) 0%, rgba(196, 87, 42, 0.03) 100%)' }}>
                 <h3 className="font-display text-xl font-bold uppercase tracking-wider mb-5 pb-3" style={{ color: 'var(--color-terracotta)', borderBottom: '2px solid var(--color-terracotta)' }}>Ingredientes</h3>
-                <ul className="space-y-3">
+                <ul className="space-y-3" style={{ margin: 0, padding: 0 }}>
                   {recipe.ingredients?.map((ing, i) => (
                     <IngredientItem key={i} ing={ing} showCost={recipe.costing_enabled} />
                   ))}
