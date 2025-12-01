@@ -48,17 +48,38 @@ async function compressImage(file, maxWidth = 1200, quality = 0.8) {
   });
 }
 
-// Subir a ImgBB
+// Subir a ImgBB con mejor manejo de errores
 async function uploadToImgBB(file) {
-  const formData = new FormData();
-  formData.append('image', file);
-  const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
-    method: 'POST',
-    body: formData
-  });
-  const data = await response.json();
-  if (!data.success) throw new Error('Error subiendo imagen');
-  return data.data.url;
+  try {
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos timeout
+    
+    const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+      method: 'POST',
+      body: formData,
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error?.message || 'Error subiendo imagen');
+    }
+    return data.data.url;
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('Timeout: La subida de imagen tardó demasiado');
+    }
+    throw error;
+  }
 }
 
 const CATEGORIES = [
@@ -358,6 +379,8 @@ export default function App() {
 
   const handleSave = async (formData) => {
     setLoading(true);
+    let imageUploadWarning = false;
+    
     try {
       // Procesar imágenes de los pasos
       const processedSteps = await Promise.all(formData.steps.map(async (step) => {
@@ -367,11 +390,15 @@ export default function App() {
             const url = await uploadToImgBB(compressed);
             return { description: step.description, imageUrl: url };
           } catch (error) {
-            console.error("Error subiendo:", error);
-            return { description: step.description, imageUrl: step.imageUrl || '' };
+            console.error("Error subiendo imagen:", error);
+            imageUploadWarning = true;
+            // Si ya tenía una imagen anterior, mantenerla; si no, dejar vacío
+            return { description: step.description, imageUrl: step.imageUrl?.startsWith('blob:') ? '' : (step.imageUrl || '') };
           }
         }
-        return { description: step.description, imageUrl: step.imageUrl || '' };
+        // Si la URL es un blob local, no la guardamos
+        const imageUrl = step.imageUrl?.startsWith('blob:') ? '' : (step.imageUrl || '');
+        return { description: step.description, imageUrl };
       }));
 
       const recipeData = {
@@ -390,30 +417,29 @@ export default function App() {
         updated_at: new Date().toISOString()
       };
 
+      let supabaseError = null;
+
       if (activeRecipe?.id) {
         // Actualizar receta existente
-        const { error } = await supabase
+        const result = await supabase
           .from('recipes')
           .update(recipeData)
           .eq('id', activeRecipe.id);
         
-        if (error) {
-          console.error('Supabase error:', error);
-          throw error;
-        }
-        showNotification('¡Receta actualizada con éxito!');
+        supabaseError = result.error;
       } else {
         // Crear nueva receta
         recipeData.created_at = new Date().toISOString();
-        const { error } = await supabase
+        const result = await supabase
           .from('recipes')
           .insert([recipeData]);
         
-        if (error) {
-          console.error('Supabase error:', error);
-          throw error;
-        }
-        showNotification('¡Receta creada con éxito!');
+        supabaseError = result.error;
+      }
+
+      if (supabaseError) {
+        console.error('Supabase error:', supabaseError);
+        throw new Error(supabaseError.message || 'Error en la base de datos');
       }
       
       // Recargar recetas y cambiar vista
@@ -421,9 +447,23 @@ export default function App() {
       setActiveRecipe(null);
       setView('list');
       
+      if (imageUploadWarning) {
+        showNotification('Receta guardada (algunas imágenes no se subieron)', 'success');
+      } else {
+        showNotification(activeRecipe?.id ? '¡Receta actualizada!' : '¡Receta creada!');
+      }
+      
     } catch (e) {
       console.error("Error completo:", e);
-      showNotification(`Error al guardar: ${e.message || 'Error desconocido'}`, 'error');
+      let errorMsg = 'Error al guardar';
+      
+      if (e.message?.includes('Failed to fetch')) {
+        errorMsg = 'Error de conexión. Verifica tu internet.';
+      } else if (e.message) {
+        errorMsg = `Error: ${e.message}`;
+      }
+      
+      showNotification(errorMsg, 'error');
     } finally {
       setLoading(false);
     }
