@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { 
   Camera, Trash2, Plus, Save, Printer, Edit, ChefHat, ArrowLeft, 
-  Loader2, Image, X, Link, Tag, DollarSign
+  Loader2, Image, X, DollarSign, Clock, Users, Utensils, Search,
+  BookOpen, Flame, Star
 } from 'lucide-react';
 
 // Configuración Supabase
@@ -60,7 +61,174 @@ async function uploadToImgBB(file) {
   return data.data.url;
 }
 
-const CATEGORIES = ["Pizza", "Entrantes", "Ensaladas", "Platos Calientes", "Postres", "Preparaciones"];
+const CATEGORIES = [
+  { id: "pizza", name: "Pizza", icon: "🍕" },
+  { id: "entrantes", name: "Entrantes", icon: "🥗" },
+  { id: "ensaladas", name: "Ensaladas", icon: "🥬" },
+  { id: "calientes", name: "Platos Calientes", icon: "🍲" },
+  { id: "postres", name: "Postres", icon: "🍰" },
+  { id: "preparaciones", name: "Preparaciones", icon: "🔪" }
+];
+
+// Estilos CSS personalizados
+const customStyles = `
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --color-cream: #FDF8F3;
+    --color-warm-white: #FFFCF9;
+    --color-terracotta: #C4572A;
+    --color-terracotta-dark: #A04520;
+    --color-olive: #5C6B4A;
+    --color-olive-light: #7A8B68;
+    --color-charcoal: #2C2C2C;
+    --color-warm-gray: #6B6560;
+    --color-sand: #E8DFD5;
+    --color-gold: #D4A853;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--color-cream);
+    color: var(--color-charcoal);
+    margin: 0;
+    min-height: 100vh;
+  }
+
+  .font-display {
+    font-family: 'Cormorant Garamond', serif;
+  }
+
+  .bg-noise {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.03;
+  }
+
+  .card-hover {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card-hover:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 25px 50px -12px rgba(44, 44, 44, 0.15);
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--color-terracotta) 0%, var(--color-terracotta-dark) 100%);
+    color: white;
+    border: none;
+    padding: 0.875rem 1.75rem;
+    border-radius: 50px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px -10px rgba(196, 87, 42, 0.5);
+  }
+
+  .btn-secondary {
+    background: var(--color-warm-white);
+    color: var(--color-charcoal);
+    border: 2px solid var(--color-sand);
+    padding: 0.75rem 1.5rem;
+    border-radius: 50px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--color-terracotta);
+    color: var(--color-terracotta);
+  }
+
+  .input-field {
+    width: 100%;
+    padding: 1rem 1.25rem;
+    border: 2px solid var(--color-sand);
+    border-radius: 12px;
+    font-size: 1rem;
+    font-family: 'Outfit', sans-serif;
+    background: var(--color-warm-white);
+    transition: all 0.3s ease;
+  }
+
+  .input-field:focus {
+    outline: none;
+    border-color: var(--color-terracotta);
+    box-shadow: 0 0 0 4px rgba(196, 87, 42, 0.1);
+  }
+
+  .input-field::placeholder {
+    color: #A9A29C;
+  }
+
+  .category-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 1rem;
+    background: var(--color-sand);
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--color-charcoal);
+  }
+
+  .fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .stagger-1 { animation-delay: 0.1s; }
+  .stagger-2 { animation-delay: 0.2s; }
+  .stagger-3 { animation-delay: 0.3s; }
+  .stagger-4 { animation-delay: 0.4s; }
+
+  .recipe-card-image {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .recipe-card-image::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(to top, rgba(44,44,44,0.6) 0%, transparent 100%);
+  }
+
+  .print-styles {
+    display: none;
+  }
+
+  @media print {
+    .no-print { display: none !important; }
+    .print-styles { display: block; }
+    body { background: white; }
+  }
+`;
 
 export default function App() {
   const [userId] = useState(() => {
@@ -76,12 +244,11 @@ export default function App() {
   const [view, setView] = useState('list');
   const [activeRecipe, setActiveRecipe] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [notification, setNotification] = useState(null);
 
-  useEffect(() => {
-    loadRecipes();
-  }, []);
-
-  const loadRecipes = async () => {
+  const loadRecipes = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('recipes')
@@ -92,9 +259,19 @@ export default function App() {
       setRecipes(data || []);
     } catch (error) {
       console.error('Error:', error);
+      showNotification('Error al cargar recetas', 'error');
     } finally {
       setLoading(false);
     }
+  }, [userId]);
+
+  useEffect(() => {
+    loadRecipes();
+  }, [loadRecipes]);
+
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
   };
 
   const handleSave = async (formData) => {
@@ -108,149 +285,317 @@ export default function App() {
             return { description: step.description, imageUrl: url };
           } catch (error) {
             console.error("Error subiendo:", error);
-            return { description: step.description, imageUrl: '' };
+            return { description: step.description, imageUrl: step.imageUrl || '' };
           }
         }
-        return step;
+        return { description: step.description, imageUrl: step.imageUrl || '' };
       }));
 
       const recipeData = {
-        ...formData,
+        title: formData.title,
+        category: formData.category,
+        description: formData.description,
+        yield: formData.yield,
+        prep_time: formData.prep_time,
+        ingredients: formData.ingredients,
         steps: processedSteps,
+        costing_enabled: formData.costing_enabled,
+        total_cost: formData.total_cost,
+        cost_per_portion: formData.cost_per_portion,
         user_id: userId,
         updated_at: new Date().toISOString()
       };
 
+      let savedRecipe = null;
+
       if (activeRecipe?.id) {
-        await supabase.from('recipes').update(recipeData).eq('id', activeRecipe.id);
+        const { data, error } = await supabase
+          .from('recipes')
+          .update(recipeData)
+          .eq('id', activeRecipe.id)
+          .select()
+          .single();
+        if (error) throw error;
+        savedRecipe = data;
+        showNotification('¡Receta actualizada con éxito!');
       } else {
-        await supabase.from('recipes').insert([recipeData]);
+        recipeData.created_at = new Date().toISOString();
+        const { data, error } = await supabase
+          .from('recipes')
+          .insert([recipeData])
+          .select()
+          .single();
+        if (error) throw error;
+        savedRecipe = data;
+        showNotification('¡Receta creada con éxito!');
       }
       
+      // Recargar recetas y luego cambiar la vista
       await loadRecipes();
+      setActiveRecipe(null);
       setView('list');
+      
     } catch (e) {
       console.error("Error:", e);
-      alert("Error al guardar");
+      showNotification('Error al guardar la receta', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('¿Eliminar?')) return;
+    if (!confirm('¿Estás seguro de eliminar esta receta?')) return;
+    setLoading(true);
     try {
-      await supabase.from('recipes').delete().eq('id', id);
+      const { error } = await supabase.from('recipes').delete().eq('id', id);
+      if (error) throw error;
       await loadRecipes();
-      if (activeRecipe?.id === id) setView('list');
+      if (activeRecipe?.id === id) {
+        setActiveRecipe(null);
+        setView('list');
+      }
+      showNotification('Receta eliminada');
     } catch (e) {
-      alert('Error al eliminar');
+      showNotification('Error al eliminar', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading && !recipes.length && view === 'list') {
-    return (
-      <div className="flex items-center justify-center h-screen bg-slate-50">
-        <Loader2 className="w-10 h-10 animate-spin text-orange-600" />
-      </div>
-    );
-  }
+  const filteredRecipes = recipes.filter(recipe => {
+    const matchesSearch = recipe.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         recipe.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = !selectedCategory || recipe.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <header className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('list')}>
-            <div className="bg-orange-600 p-2 rounded-lg text-white">
-              <ChefHat size={24} />
-            </div>
-            <h1 className="text-xl font-bold">ChefManager</h1>
+    <>
+      <style>{customStyles}</style>
+      
+      {/* Notification Toast */}
+      {notification && (
+        <div 
+          className={`fixed top-6 right-6 z-50 px-6 py-4 rounded-xl shadow-2xl fade-in ${
+            notification.type === 'error' 
+              ? 'bg-red-500 text-white' 
+              : 'bg-[var(--color-olive)] text-white'
+          }`}
+          style={{ fontFamily: 'Outfit, sans-serif' }}
+        >
+          <div className="flex items-center gap-3">
+            {notification.type === 'error' ? (
+              <X size={20} />
+            ) : (
+              <Star size={20} />
+            )}
+            <span className="font-medium">{notification.message}</span>
           </div>
-          {view !== 'list' && (
-            <button onClick={() => setView('list')} className="flex items-center gap-2 px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-md">
-              <ArrowLeft size={16} /> Volver
-            </button>
-          )}
         </div>
-      </header>
+      )}
 
-      <main className="max-w-5xl mx-auto p-4">
-        {view === 'list' && (
-          <RecipeList 
-            recipes={recipes}
-            onCreate={() => { setActiveRecipe(null); setView('edit'); }}
-            onSelect={(r) => { setActiveRecipe(r); setView('view'); }}
-            onEdit={(r) => { setActiveRecipe(r); setView('edit'); }}
-            onDelete={handleDelete}
-          />
-        )}
+      <div className="min-h-screen relative" style={{ background: 'var(--color-cream)' }}>
+        {/* Texture overlay */}
+        <div className="fixed inset-0 bg-noise pointer-events-none" />
         
-        {view === 'edit' && (
-          <RecipeEditor 
-            initialData={activeRecipe}
-            onSave={handleSave}
-            onCancel={() => setView('list')}
-          />
-        )}
+        {/* Header */}
+        <header className="sticky top-0 z-40 no-print" style={{ 
+          background: 'rgba(253, 248, 243, 0.95)',
+          backdropFilter: 'blur(20px)',
+          borderBottom: '1px solid var(--color-sand)'
+        }}>
+          <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
+            <div 
+              className="flex items-center gap-4 cursor-pointer group" 
+              onClick={() => { setView('list'); setActiveRecipe(null); }}
+            >
+              <div 
+                className="w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110"
+                style={{ background: 'linear-gradient(135deg, var(--color-terracotta) 0%, var(--color-terracotta-dark) 100%)' }}
+              >
+                <ChefHat size={26} className="text-white" />
+              </div>
+              <div>
+                <h1 className="font-display text-2xl font-bold" style={{ color: 'var(--color-charcoal)' }}>
+                  ChefManager
+                </h1>
+                <p className="text-xs tracking-widest uppercase" style={{ color: 'var(--color-warm-gray)' }}>
+                  Fichas Técnicas
+                </p>
+              </div>
+            </div>
+            
+            {view !== 'list' && (
+              <button 
+                onClick={() => { setView('list'); setActiveRecipe(null); }} 
+                className="btn-secondary"
+              >
+                <ArrowLeft size={18} /> Volver
+              </button>
+            )}
+          </div>
+        </header>
 
-        {view === 'view' && activeRecipe && (
-          <RecipeViewer 
-            recipe={activeRecipe}
-            onEdit={() => { setActiveRecipe(activeRecipe); setView('edit'); }}
-          />
-        )}
-      </main>
-    </div>
+        <main className="max-w-6xl mx-auto px-6 py-8 relative">
+          {loading && recipes.length === 0 && view === 'list' ? (
+            <div className="flex flex-col items-center justify-center py-32">
+              <div className="relative">
+                <div className="w-20 h-20 rounded-full border-4 border-[var(--color-sand)]" />
+                <div 
+                  className="absolute inset-0 w-20 h-20 rounded-full border-4 border-transparent border-t-[var(--color-terracotta)] animate-spin" 
+                />
+              </div>
+              <p className="mt-6 text-lg" style={{ color: 'var(--color-warm-gray)' }}>
+                Cargando tus recetas...
+              </p>
+            </div>
+          ) : (
+            <>
+              {view === 'list' && (
+                <RecipeList 
+                  recipes={filteredRecipes}
+                  allRecipes={recipes}
+                  searchTerm={searchTerm}
+                  setSearchTerm={setSearchTerm}
+                  selectedCategory={selectedCategory}
+                  setSelectedCategory={setSelectedCategory}
+                  onCreate={() => { setActiveRecipe(null); setView('edit'); }}
+                  onSelect={(r) => { setActiveRecipe(r); setView('view'); }}
+                  onEdit={(r) => { setActiveRecipe(r); setView('edit'); }}
+                  onDelete={handleDelete}
+                  loading={loading}
+                />
+              )}
+              
+              {view === 'edit' && (
+                <RecipeEditor 
+                  initialData={activeRecipe}
+                  onSave={handleSave}
+                  onCancel={() => { setView('list'); setActiveRecipe(null); }}
+                  saving={loading}
+                />
+              )}
+
+              {view === 'view' && activeRecipe && (
+                <RecipeViewer 
+                  recipe={activeRecipe}
+                  onEdit={() => setView('edit')}
+                />
+              )}
+            </>
+          )}
+        </main>
+      </div>
+    </>
   );
 }
 
-function RecipeList({ recipes, onCreate, onSelect, onEdit, onDelete }) {
+function RecipeList({ 
+  recipes, allRecipes, searchTerm, setSearchTerm, 
+  selectedCategory, setSelectedCategory, 
+  onCreate, onSelect, onEdit, onDelete, loading 
+}) {
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Mis Fichas</h2>
-        <button onClick={onCreate} className="bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
-          <Plus size={20} /> Nueva
+    <div className="fade-in">
+      {/* Hero Section */}
+      <div className="text-center mb-12">
+        <h2 className="font-display text-5xl md:text-6xl font-bold mb-4" style={{ color: 'var(--color-charcoal)' }}>
+          Mis Fichas Técnicas
+        </h2>
+        <p className="text-lg max-w-xl mx-auto" style={{ color: 'var(--color-warm-gray)' }}>
+          Organiza y accede a todas tus recetas profesionales en un solo lugar
+        </p>
+      </div>
+
+      {/* Search & Actions Bar */}
+      <div className="flex flex-col md:flex-row gap-4 mb-8">
+        <div className="flex-grow relative">
+          <Search 
+            size={20} 
+            className="absolute left-4 top-1/2 -translate-y-1/2"
+            style={{ color: 'var(--color-warm-gray)' }}
+          />
+          <input
+            type="text"
+            placeholder="Buscar recetas..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="input-field pl-12"
+          />
+        </div>
+        <button onClick={onCreate} className="btn-primary">
+          <Plus size={20} /> Nueva Ficha
         </button>
       </div>
 
+      {/* Category Pills */}
+      <div className="flex flex-wrap gap-2 mb-10">
+        <button
+          onClick={() => setSelectedCategory(null)}
+          className="category-pill transition-all"
+          style={{
+            background: !selectedCategory ? 'var(--color-terracotta)' : 'var(--color-sand)',
+            color: !selectedCategory ? 'white' : 'var(--color-charcoal)'
+          }}
+        >
+          Todas ({allRecipes.length})
+        </button>
+        {CATEGORIES.map(cat => {
+          const count = allRecipes.filter(r => r.category === cat.name).length;
+          const isActive = selectedCategory === cat.name;
+          return (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(isActive ? null : cat.name)}
+              className="category-pill transition-all"
+              style={{
+                background: isActive ? 'var(--color-terracotta)' : 'var(--color-sand)',
+                color: isActive ? 'white' : 'var(--color-charcoal)'
+              }}
+            >
+              <span>{cat.icon}</span> {cat.name} ({count})
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Recipe Grid */}
       {recipes.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-xl border-dashed border-2">
-          <ChefHat className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-slate-600">No hay recetas</h3>
-          <button onClick={onCreate} className="text-orange-600 mt-4">Crear ahora</button>
+        <div 
+          className="text-center py-24 rounded-3xl border-2 border-dashed fade-in"
+          style={{ borderColor: 'var(--color-sand)', background: 'var(--color-warm-white)' }}
+        >
+          <div 
+            className="w-24 h-24 rounded-full mx-auto mb-6 flex items-center justify-center"
+            style={{ background: 'var(--color-sand)' }}
+          >
+            <BookOpen size={40} style={{ color: 'var(--color-warm-gray)' }} />
+          </div>
+          <h3 className="font-display text-2xl font-semibold mb-2" style={{ color: 'var(--color-charcoal)' }}>
+            {searchTerm || selectedCategory ? 'No hay resultados' : 'Tu libro de recetas está vacío'}
+          </h3>
+          <p className="mb-6" style={{ color: 'var(--color-warm-gray)' }}>
+            {searchTerm || selectedCategory 
+              ? 'Prueba con otros términos de búsqueda' 
+              : 'Comienza creando tu primera ficha técnica'}
+          </p>
+          {!searchTerm && !selectedCategory && (
+            <button onClick={onCreate} className="btn-primary">
+              <Plus size={20} /> Crear mi primera receta
+            </button>
+          )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {recipes.map((recipe) => (
-            <div key={recipe.id} className="bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-md transition group">
-              <div className="h-32 bg-slate-100 flex items-center justify-center cursor-pointer" onClick={() => onSelect(recipe)}>
-                {recipe.steps?.find(s => s.imageUrl) ? (
-                  <img src={recipe.steps.find(s => s.imageUrl).imageUrl} alt={recipe.title} className="w-full h-full object-cover" />
-                ) : (
-                  <Image className="text-slate-300 w-12 h-12" />
-                )}
-              </div>
-              <div className="p-4">
-                <h3 className="font-bold text-lg mb-1 cursor-pointer hover:text-orange-600" onClick={() => onSelect(recipe)}>
-                  {recipe.title}
-                </h3>
-                <p className="text-sm text-slate-500 line-clamp-2 mb-4">{recipe.description}</p>
-                <div className="flex justify-between items-center pt-2 border-t">
-                  <span className="text-xs font-semibold bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
-                    {recipe.yield}
-                  </span>
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
-                    <button onClick={() => onEdit(recipe)} className="p-1.5 hover:bg-slate-100 rounded-md text-blue-600">
-                      <Edit size={16} />
-                    </button>
-                    <button onClick={() => onDelete(recipe.id)} className="p-1.5 hover:bg-slate-100 rounded-md text-red-600">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {recipes.map((recipe, index) => (
+            <RecipeCard
+              key={recipe.id}
+              recipe={recipe}
+              index={index}
+              onSelect={onSelect}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
           ))}
         </div>
       )}
@@ -258,7 +603,117 @@ function RecipeList({ recipes, onCreate, onSelect, onEdit, onDelete }) {
   );
 }
 
-function RecipeEditor({ initialData, onSave, onCancel }) {
+function RecipeCard({ recipe, index, onSelect, onEdit, onDelete }) {
+  const mainImage = recipe.steps?.find(s => s.imageUrl)?.imageUrl;
+  const categoryData = CATEGORIES.find(c => c.name === recipe.category);
+  
+  return (
+    <div 
+      className={`card-hover rounded-3xl overflow-hidden fade-in stagger-${(index % 4) + 1}`}
+      style={{ 
+        background: 'var(--color-warm-white)',
+        boxShadow: '0 4px 20px -5px rgba(44, 44, 44, 0.08)'
+      }}
+    >
+      {/* Image */}
+      <div 
+        className="recipe-card-image h-48 cursor-pointer relative"
+        onClick={() => onSelect(recipe)}
+        style={{ background: 'var(--color-sand)' }}
+      >
+        {mainImage ? (
+          <img 
+            src={mainImage} 
+            alt={recipe.title} 
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <Utensils size={40} style={{ color: 'var(--color-warm-gray)', opacity: 0.5 }} />
+          </div>
+        )}
+        
+        {/* Category badge */}
+        {categoryData && (
+          <div 
+            className="absolute top-4 left-4 z-10 px-3 py-1.5 rounded-full text-sm font-medium"
+            style={{ background: 'rgba(255,255,255,0.95)' }}
+          >
+            <span className="mr-1">{categoryData.icon}</span> {categoryData.name}
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="p-5">
+        <h3 
+          className="font-display text-xl font-bold mb-2 cursor-pointer hover:text-[var(--color-terracotta)] transition-colors line-clamp-1"
+          onClick={() => onSelect(recipe)}
+          style={{ color: 'var(--color-charcoal)' }}
+        >
+          {recipe.title}
+        </h3>
+        
+        <p 
+          className="text-sm line-clamp-2 mb-4 leading-relaxed"
+          style={{ color: 'var(--color-warm-gray)' }}
+        >
+          {recipe.description || 'Sin descripción'}
+        </p>
+
+        {/* Meta info */}
+        <div className="flex items-center gap-4 mb-4 text-sm" style={{ color: 'var(--color-warm-gray)' }}>
+          {recipe.yield && (
+            <div className="flex items-center gap-1">
+              <Users size={14} />
+              <span>{recipe.yield}</span>
+            </div>
+          )}
+          {recipe.prep_time && (
+            <div className="flex items-center gap-1">
+              <Clock size={14} />
+              <span>{recipe.prep_time}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div 
+          className="flex justify-between items-center pt-4"
+          style={{ borderTop: '1px solid var(--color-sand)' }}
+        >
+          {recipe.costing_enabled && recipe.cost_per_portion ? (
+            <div className="flex items-center gap-1 text-sm font-semibold" style={{ color: 'var(--color-olive)' }}>
+              <DollarSign size={14} />
+              <span>{recipe.cost_per_portion}€/porción</span>
+            </div>
+          ) : (
+            <div />
+          )}
+          
+          <div className="flex gap-1">
+            <button 
+              onClick={(e) => { e.stopPropagation(); onEdit(recipe); }}
+              className="p-2.5 rounded-xl transition-all hover:bg-[var(--color-sand)]"
+              title="Editar"
+            >
+              <Edit size={18} style={{ color: 'var(--color-terracotta)' }} />
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); onDelete(recipe.id); }}
+              className="p-2.5 rounded-xl transition-all hover:bg-red-50"
+              title="Eliminar"
+            >
+              <Trash2 size={18} className="text-red-500" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RecipeEditor({ initialData, onSave, onCancel, saving }) {
   const [formData, setFormData] = useState({
     title: initialData?.title || '',
     category: initialData?.category || 'Platos Calientes',
@@ -271,17 +726,21 @@ function RecipeEditor({ initialData, onSave, onCancel }) {
     total_cost: initialData?.total_cost || '',
     cost_per_portion: initialData?.cost_per_portion || ''
   });
-  const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSaving(true);
+    if (!formData.title.trim()) {
+      alert('Por favor, ingresa un nombre para el plato');
+      return;
+    }
     await onSave(formData);
-    setSaving(false);
   };
 
   const addIngredient = () => {
-    setFormData({ ...formData, ingredients: [...formData.ingredients, { item: '', quantity: '', unit: '', cost: '' }] });
+    setFormData({ 
+      ...formData, 
+      ingredients: [...formData.ingredients, { item: '', quantity: '', unit: '', cost: '' }] 
+    });
   };
 
   const updateIngredient = (index, field, value) => {
@@ -291,11 +750,18 @@ function RecipeEditor({ initialData, onSave, onCancel }) {
   };
 
   const removeIngredient = (index) => {
-    setFormData({ ...formData, ingredients: formData.ingredients.filter((_, i) => i !== index) });
+    if (formData.ingredients.length === 1) return;
+    setFormData({ 
+      ...formData, 
+      ingredients: formData.ingredients.filter((_, i) => i !== index) 
+    });
   };
 
   const addStep = () => {
-    setFormData({ ...formData, steps: [...formData.steps, { description: '', imageUrl: '' }] });
+    setFormData({ 
+      ...formData, 
+      steps: [...formData.steps, { description: '', imageUrl: '' }] 
+    });
   };
 
   const updateStep = (index, value) => {
@@ -306,298 +772,641 @@ function RecipeEditor({ initialData, onSave, onCancel }) {
 
   const handleImageSelect = (index, file) => {
     const newSteps = [...formData.steps];
-    newSteps[index] = { ...newSteps[index], tempImageFile: file, imageUrl: URL.createObjectURL(file) };
+    newSteps[index] = { 
+      ...newSteps[index], 
+      tempImageFile: file, 
+      imageUrl: URL.createObjectURL(file) 
+    };
+    setFormData({ ...formData, steps: newSteps });
+  };
+
+  const removeStepImage = (index) => {
+    const newSteps = [...formData.steps];
+    newSteps[index] = { 
+      ...newSteps[index], 
+      tempImageFile: null, 
+      imageUrl: '' 
+    };
     setFormData({ ...formData, steps: newSteps });
   };
 
   const removeStep = (index) => {
-    setFormData({ ...formData, steps: formData.steps.filter((_, i) => i !== index) });
+    if (formData.steps.length === 1) return;
+    setFormData({ 
+      ...formData, 
+      steps: formData.steps.filter((_, i) => i !== index) 
+    });
   };
 
   useEffect(() => {
     if (formData.costing_enabled) {
-      const total = formData.ingredients.reduce((sum, ing) => sum + parseFloat(ing.cost || 0), 0);
-      const portions = parseFloat(formData.yield.replace(/[^\d.]/g, '')) || 1;
+      const total = formData.ingredients.reduce((sum, ing) => {
+        const cost = parseFloat(ing.cost) || 0;
+        return sum + cost;
+      }, 0);
+      const yieldMatch = formData.yield?.match(/\d+/);
+      const portions = yieldMatch ? parseFloat(yieldMatch[0]) : 1;
       setFormData(prev => ({
         ...prev,
         total_cost: total.toFixed(2),
-        cost_per_portion: (total / portions).toFixed(2)
+        cost_per_portion: portions > 0 ? (total / portions).toFixed(2) : '0.00'
       }));
     }
   }, [formData.ingredients, formData.yield, formData.costing_enabled]);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border p-6 max-w-4xl mx-auto" onSubmit={handleSubmit}>
-      <div className="flex justify-between items-center mb-6 pb-4 border-b">
-        <h2 className="text-xl font-bold">{initialData ? 'Editar' : 'Nueva'} Ficha</h2>
-        <div className="flex gap-3">
-          <button type="button" onClick={onCancel} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">
-            Cancelar
-          </button>
-          <button onClick={handleSubmit} disabled={saving} className="px-6 py-2 bg-orange-600 text-white rounded-lg flex items-center gap-2 disabled:opacity-50">
-            {saving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-            {saving ? 'Guardando...' : 'Guardar'}
-          </button>
-        </div>
-      </div>
-
-      <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input 
-            type="checkbox" 
-            checked={formData.costing_enabled}
-            onChange={(e) => setFormData({...formData, costing_enabled: e.target.checked})}
-            className="w-5 h-5"
-          />
-          <DollarSign className="w-5 h-5 text-blue-700" />
-          <span className="font-medium text-blue-900">Habilitar Escandallo de Costos</span>
-        </label>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="col-span-2">
-          <label className="block text-sm font-medium mb-1">Nombre del Plato *</label>
-          <input 
-            required
-            type="text" 
-            value={formData.title} 
-            onChange={e => setFormData({...formData, title: e.target.value})}
-            className="w-full px-4 py-2 border rounded-lg"
-            placeholder="Ej: Salmón a la Plancha"
-          />
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium mb-1">Categoría</label>
-          <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full px-4 py-2 border rounded-lg">
-            {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Rendimiento</label>
-          <input 
-            type="text" 
-            value={formData.yield} 
-            onChange={e => setFormData({...formData, yield: e.target.value})}
-            className="w-full px-4 py-2 border rounded-lg"
-            placeholder="4 Porciones"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Tiempo</label>
-          <input 
-            type="text" 
-            value={formData.prep_time} 
-            onChange={e => setFormData({...formData, prep_time: e.target.value})}
-            className="w-full px-4 py-2 border rounded-lg"
-            placeholder="45 min"
-          />
-        </div>
-
-        <div className="col-span-2">
-          <label className="block text-sm font-medium mb-1">Descripción</label>
-          <textarea 
-            value={formData.description} 
-            onChange={e => setFormData({...formData, description: e.target.value})}
-            className="w-full px-4 py-2 border rounded-lg h-20"
-          />
-        </div>
-      </div>
-
-      <div className="mb-8">
-        <h3 className="font-semibold text-lg mb-3">Ingredientes</h3>
-        <div className="space-y-2 bg-slate-50 p-4 rounded-xl border">
-          {formData.ingredients.map((ing, idx) => (
-            <div key={idx} className="flex gap-2">
-              <input 
-                placeholder="Ingrediente" 
-                value={ing.item}
-                onChange={e => updateIngredient(idx, 'item', e.target.value)}
-                className="flex-grow px-3 py-2 border rounded-md text-sm"
-              />
-              <input 
-                placeholder="Cant." 
-                value={ing.quantity}
-                onChange={e => updateIngredient(idx, 'quantity', e.target.value)}
-                className="w-20 px-3 py-2 border rounded-md text-sm"
-              />
-              <input 
-                placeholder="Unidad" 
-                value={ing.unit}
-                onChange={e => updateIngredient(idx, 'unit', e.target.value)}
-                className="w-20 px-3 py-2 border rounded-md text-sm"
-              />
-              {formData.costing_enabled && (
-                <input 
-                  type="number"
-                  step="0.01"
-                  placeholder="€"
-                  value={ing.cost}
-                  onChange={e => updateIngredient(idx, 'cost', e.target.value)}
-                  className="w-20 px-3 py-2 border rounded-md text-sm"
-                />
+    <form onSubmit={handleSubmit} className="fade-in">
+      <div 
+        className="rounded-3xl overflow-hidden"
+        style={{ 
+          background: 'var(--color-warm-white)',
+          boxShadow: '0 10px 40px -10px rgba(44, 44, 44, 0.1)'
+        }}
+      >
+        {/* Header */}
+        <div 
+          className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4"
+          style={{ borderBottom: '2px solid var(--color-sand)' }}
+        >
+          <div>
+            <h2 className="font-display text-3xl font-bold" style={{ color: 'var(--color-charcoal)' }}>
+              {initialData ? 'Editar Ficha' : 'Nueva Ficha Técnica'}
+            </h2>
+            <p style={{ color: 'var(--color-warm-gray)' }}>
+              {initialData ? 'Modifica los detalles de tu receta' : 'Crea una nueva receta profesional'}
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button type="button" onClick={onCancel} className="btn-secondary">
+              Cancelar
+            </button>
+            <button type="submit" disabled={saving} className="btn-primary">
+              {saving ? (
+                <>
+                  <Loader2 className="animate-spin" size={20} />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <Save size={20} />
+                  Guardar Receta
+                </>
               )}
-              <button type="button" onClick={() => removeIngredient(idx)} className="text-red-500 p-2">
-                <X size={18} />
-              </button>
-            </div>
-          ))}
-          <button type="button" onClick={addIngredient} className="text-sm text-orange-600 flex items-center gap-1 mt-2">
-            <Plus size={16} /> Añadir Ingrediente
-          </button>
+            </button>
+          </div>
         </div>
 
-        {formData.costing_enabled && formData.total_cost && (
-          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-green-700 font-medium">Costo Total: </span>
-              <span className="text-green-900 font-bold">{formData.total_cost}€</span>
+        <div className="p-6 md:p-10">
+          {/* Costing Toggle */}
+          <div 
+            className="mb-8 p-5 rounded-2xl flex items-center gap-4"
+            style={{ background: 'linear-gradient(135deg, rgba(92, 107, 74, 0.1) 0%, rgba(92, 107, 74, 0.05) 100%)' }}
+          >
+            <label className="flex items-center gap-3 cursor-pointer flex-grow">
+              <input 
+                type="checkbox" 
+                checked={formData.costing_enabled}
+                onChange={(e) => setFormData({...formData, costing_enabled: e.target.checked})}
+                className="w-5 h-5 rounded accent-[var(--color-olive)]"
+              />
+              <DollarSign className="w-5 h-5" style={{ color: 'var(--color-olive)' }} />
+              <div>
+                <span className="font-semibold" style={{ color: 'var(--color-charcoal)' }}>
+                  Habilitar Escandallo de Costos
+                </span>
+                <p className="text-sm" style={{ color: 'var(--color-warm-gray)' }}>
+                  Calcula automáticamente el costo por porción
+                </p>
+              </div>
+            </label>
+          </div>
+
+          {/* Basic Info Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold mb-2" style={{ color: 'var(--color-charcoal)' }}>
+                Nombre del Plato *
+              </label>
+              <input 
+                required
+                type="text" 
+                value={formData.title} 
+                onChange={e => setFormData({...formData, title: e.target.value})}
+                className="input-field text-lg"
+                placeholder="Ej: Risotto de Setas Silvestres"
+              />
             </div>
+            
             <div>
-              <span className="text-green-700 font-medium">Costo/Porción: </span>
-              <span className="text-green-900 font-bold">{formData.cost_per_portion}€</span>
+              <label className="block text-sm font-semibold mb-2" style={{ color: 'var(--color-charcoal)' }}>
+                Categoría
+              </label>
+              <select 
+                value={formData.category} 
+                onChange={e => setFormData({...formData, category: e.target.value})} 
+                className="input-field"
+              >
+                {CATEGORIES.map(cat => (
+                  <option key={cat.id} value={cat.name}>
+                    {cat.icon} {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold mb-2" style={{ color: 'var(--color-charcoal)' }}>
+                Rendimiento
+              </label>
+              <input 
+                type="text" 
+                value={formData.yield} 
+                onChange={e => setFormData({...formData, yield: e.target.value})}
+                className="input-field"
+                placeholder="Ej: 4 Porciones"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold mb-2" style={{ color: 'var(--color-charcoal)' }}>
+                Tiempo de Preparación
+              </label>
+              <input 
+                type="text" 
+                value={formData.prep_time} 
+                onChange={e => setFormData({...formData, prep_time: e.target.value})}
+                className="input-field"
+                placeholder="Ej: 45 min"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold mb-2" style={{ color: 'var(--color-charcoal)' }}>
+                Descripción
+              </label>
+              <textarea 
+                value={formData.description} 
+                onChange={e => setFormData({...formData, description: e.target.value})}
+                className="input-field resize-none"
+                style={{ minHeight: '100px' }}
+                placeholder="Breve descripción del plato..."
+              />
             </div>
           </div>
-        )}
-      </div>
 
-      <div>
-        <h3 className="font-semibold text-lg mb-3">Preparación</h3>
-        <div className="space-y-6">
-          {formData.steps.map((step, idx) => (
-            <div key={idx} className="flex flex-col md:flex-row gap-4 p-4 border rounded-lg relative group">
-              <div className="flex-none w-full md:w-40 h-40 bg-slate-100 rounded-lg overflow-hidden relative border">
-                {step.imageUrl ? (
-                  <img src={step.imageUrl} alt={`Paso ${idx + 1}`} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full">
-                    <Camera className="text-slate-400 mb-1" />
-                    <span className="text-xs text-slate-500">Sin foto</span>
-                  </div>
-                )}
-                <label className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 flex items-center justify-center cursor-pointer text-white text-xs">
-                  <Camera size={24} className="mb-1" />
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files && handleImageSelect(idx, e.target.files[0])} />
-                </label>
+          {/* Ingredients Section */}
+          <div className="mb-10">
+            <div className="flex items-center gap-3 mb-4">
+              <div 
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ background: 'var(--color-terracotta)', color: 'white' }}
+              >
+                <Utensils size={20} />
               </div>
-
-              <div className="flex-grow">
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm font-bold text-slate-500">PASO {idx + 1}</span>
-                  <button type="button" onClick={() => removeStep(idx)} className="text-slate-300 hover:text-red-500">
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-                <textarea 
-                  value={step.description}
-                  onChange={e => updateStep(idx, e.target.value)}
-                  placeholder="Describe este paso..."
-                  className="w-full h-28 px-3 py-2 border rounded-md text-sm resize-none"
-                />
-              </div>
+              <h3 className="font-display text-2xl font-bold" style={{ color: 'var(--color-charcoal)' }}>
+                Ingredientes
+              </h3>
             </div>
-          ))}
-          <button type="button" onClick={addStep} className="w-full py-3 border-2 border-dashed rounded-lg text-slate-500 hover:border-orange-500 hover:text-orange-600 flex justify-center items-center gap-2">
-            <Plus size={20} /> Añadir Paso
-          </button>
+            
+            <div 
+              className="rounded-2xl p-5"
+              style={{ background: 'var(--color-cream)' }}
+            >
+              <div className="space-y-3">
+                {/* Header row for labels */}
+                <div className="hidden md:grid gap-3" style={{ 
+                  gridTemplateColumns: formData.costing_enabled 
+                    ? '1fr 100px 100px 100px 40px' 
+                    : '1fr 100px 100px 40px' 
+                }}>
+                  <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-warm-gray)' }}>
+                    Ingrediente
+                  </span>
+                  <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-warm-gray)' }}>
+                    Cantidad
+                  </span>
+                  <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-warm-gray)' }}>
+                    Unidad
+                  </span>
+                  {formData.costing_enabled && (
+                    <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-warm-gray)' }}>
+                      Costo €
+                    </span>
+                  )}
+                  <span></span>
+                </div>
+
+                {formData.ingredients.map((ing, idx) => (
+                  <div 
+                    key={idx} 
+                    className="grid gap-3 items-center"
+                    style={{ 
+                      gridTemplateColumns: formData.costing_enabled 
+                        ? '1fr 100px 100px 100px 40px' 
+                        : '1fr 100px 100px 40px' 
+                    }}
+                  >
+                    <input 
+                      placeholder="Nombre del ingrediente" 
+                      value={ing.item}
+                      onChange={e => updateIngredient(idx, 'item', e.target.value)}
+                      className="input-field"
+                    />
+                    <input 
+                      placeholder="Cant." 
+                      value={ing.quantity}
+                      onChange={e => updateIngredient(idx, 'quantity', e.target.value)}
+                      className="input-field text-center"
+                    />
+                    <input 
+                      placeholder="Unidad" 
+                      value={ing.unit}
+                      onChange={e => updateIngredient(idx, 'unit', e.target.value)}
+                      className="input-field text-center"
+                    />
+                    {formData.costing_enabled && (
+                      <input 
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={ing.cost}
+                        onChange={e => updateIngredient(idx, 'cost', e.target.value)}
+                        className="input-field text-center"
+                      />
+                    )}
+                    <button 
+                      type="button" 
+                      onClick={() => removeIngredient(idx)} 
+                      className="p-2 rounded-lg hover:bg-red-50 transition-colors"
+                      disabled={formData.ingredients.length === 1}
+                    >
+                      <X size={18} className={formData.ingredients.length === 1 ? 'text-gray-300' : 'text-red-500'} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              
+              <button 
+                type="button" 
+                onClick={addIngredient} 
+                className="mt-4 flex items-center gap-2 font-semibold transition-colors"
+                style={{ color: 'var(--color-terracotta)' }}
+              >
+                <Plus size={18} /> Añadir Ingrediente
+              </button>
+            </div>
+
+            {/* Cost Summary */}
+            {formData.costing_enabled && formData.total_cost && parseFloat(formData.total_cost) > 0 && (
+              <div 
+                className="mt-4 p-5 rounded-2xl grid grid-cols-2 gap-6"
+                style={{ background: 'linear-gradient(135deg, rgba(92, 107, 74, 0.15) 0%, rgba(92, 107, 74, 0.08) 100%)' }}
+              >
+                <div>
+                  <p className="text-sm font-medium mb-1" style={{ color: 'var(--color-olive)' }}>
+                    Costo Total
+                  </p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--color-charcoal)' }}>
+                    {formData.total_cost}€
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium mb-1" style={{ color: 'var(--color-olive)' }}>
+                    Costo por Porción
+                  </p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--color-charcoal)' }}>
+                    {formData.cost_per_portion}€
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Steps Section */}
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <div 
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ background: 'var(--color-olive)', color: 'white' }}
+              >
+                <Flame size={20} />
+              </div>
+              <h3 className="font-display text-2xl font-bold" style={{ color: 'var(--color-charcoal)' }}>
+                Procedimiento
+              </h3>
+            </div>
+            
+            <div className="space-y-4">
+              {formData.steps.map((step, idx) => (
+                <div 
+                  key={idx} 
+                  className="rounded-2xl p-5 relative"
+                  style={{ background: 'var(--color-cream)' }}
+                >
+                  <div className="flex gap-5">
+                    {/* Step Number */}
+                    <div 
+                      className="flex-none w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg"
+                      style={{ 
+                        background: 'var(--color-charcoal)', 
+                        color: 'white' 
+                      }}
+                    >
+                      {idx + 1}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-grow">
+                      <div className="flex flex-col md:flex-row gap-4">
+                        {/* Image upload */}
+                        <div 
+                          className="flex-none w-full md:w-36 h-36 rounded-xl overflow-hidden relative"
+                          style={{ background: 'var(--color-sand)' }}
+                        >
+                          {step.imageUrl ? (
+                            <>
+                              <img 
+                                src={step.imageUrl} 
+                                alt={`Paso ${idx + 1}`} 
+                                className="w-full h-full object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeStepImage(idx)}
+                                className="absolute top-2 right-2 p-1.5 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors"
+                              >
+                                <X size={14} />
+                              </button>
+                            </>
+                          ) : (
+                            <label className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-[var(--color-warm-gray)]/10 transition-colors">
+                              <Camera size={24} style={{ color: 'var(--color-warm-gray)' }} />
+                              <span className="text-xs mt-1" style={{ color: 'var(--color-warm-gray)' }}>
+                                Añadir foto
+                              </span>
+                              <input 
+                                type="file" 
+                                accept="image/*" 
+                                className="hidden" 
+                                onChange={(e) => e.target.files?.[0] && handleImageSelect(idx, e.target.files[0])} 
+                              />
+                            </label>
+                          )}
+                        </div>
+
+                        {/* Description */}
+                        <div className="flex-grow">
+                          <textarea 
+                            value={step.description}
+                            onChange={e => updateStep(idx, e.target.value)}
+                            placeholder="Describe este paso de la preparación..."
+                            className="input-field resize-none w-full"
+                            style={{ minHeight: '120px' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Delete button */}
+                    <button 
+                      type="button" 
+                      onClick={() => removeStep(idx)} 
+                      className="flex-none p-2 rounded-lg hover:bg-red-50 transition-colors self-start"
+                      disabled={formData.steps.length === 1}
+                    >
+                      <Trash2 size={18} className={formData.steps.length === 1 ? 'text-gray-300' : 'text-red-500'} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <button 
+                type="button" 
+                onClick={addStep} 
+                className="w-full py-5 rounded-2xl border-2 border-dashed flex items-center justify-center gap-2 font-semibold transition-all hover:border-[var(--color-terracotta)] hover:text-[var(--color-terracotta)]"
+                style={{ 
+                  borderColor: 'var(--color-sand)', 
+                  color: 'var(--color-warm-gray)' 
+                }}
+              >
+                <Plus size={20} /> Añadir Paso
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </form>
   );
 }
 
 function RecipeViewer({ recipe, onEdit }) {
+  const mainImage = recipe.steps?.find(s => s.imageUrl)?.imageUrl;
+  const categoryData = CATEGORIES.find(c => c.name === recipe.category);
+
   return (
-    <div className="bg-white shadow-lg max-w-4xl mx-auto rounded-xl overflow-hidden">
-      <div className="bg-slate-50 border-b p-4 flex justify-end gap-3">
-        <button onClick={onEdit} className="px-4 py-2 bg-white border rounded-lg flex items-center gap-2">
-          <Edit size={16} /> Editar
+    <div className="fade-in">
+      {/* Print/Edit Actions */}
+      <div className="flex justify-end gap-3 mb-6 no-print">
+        <button onClick={onEdit} className="btn-secondary">
+          <Edit size={18} /> Editar
         </button>
-        <button onClick={() => window.print()} className="px-4 py-2 bg-slate-800 text-white rounded-lg flex items-center gap-2">
-          <Printer size={16} /> PDF
+        <button onClick={() => window.print()} className="btn-primary">
+          <Printer size={18} /> Imprimir / PDF
         </button>
       </div>
 
-      <div className="p-8 md:p-12">
-        <div className="border-b-2 border-slate-800 pb-6 mb-8 flex justify-between items-start">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl md:text-4xl font-bold">{recipe.title}</h1>
-              {recipe.category && (
-                <span className="px-3 py-1 bg-slate-100 text-slate-600 text-sm rounded-full font-medium">
-                  {recipe.category}
+      <div 
+        className="rounded-3xl overflow-hidden"
+        style={{ 
+          background: 'var(--color-warm-white)',
+          boxShadow: '0 10px 40px -10px rgba(44, 44, 44, 0.1)'
+        }}
+      >
+        {/* Hero Header */}
+        {mainImage && (
+          <div className="relative h-64 md:h-80">
+            <img 
+              src={mainImage} 
+              alt={recipe.title}
+              className="w-full h-full object-cover"
+            />
+            <div 
+              className="absolute inset-0"
+              style={{ background: 'linear-gradient(to top, rgba(44,44,44,0.8) 0%, transparent 60%)' }}
+            />
+          </div>
+        )}
+
+        <div className="p-8 md:p-12">
+          {/* Title Section */}
+          <div className="mb-10" style={{ borderBottom: '2px solid var(--color-charcoal)' }}>
+            <div className="flex flex-wrap items-center gap-3 mb-3">
+              {categoryData && (
+                <span className="category-pill">
+                  <span>{categoryData.icon}</span> {categoryData.name}
                 </span>
               )}
             </div>
-            <p className="text-lg text-slate-600 italic">{recipe.description}</p>
-          </div>
-          <div className="flex flex-col items-end gap-2 text-sm">
-            <div className="bg-slate-100 px-3 py-1 rounded">
-              <span className="font-bold">Rendimiento:</span> {recipe.yield}
-            </div>
-            {recipe.prep_time && (
-              <div className="bg-slate-100 px-3 py-1 rounded">
-                <span className="font-bold">Tiempo:</span> {recipe.prep_time}
-              </div>
+            
+            <h1 className="font-display text-4xl md:text-5xl font-bold mb-4" style={{ color: 'var(--color-charcoal)' }}>
+              {recipe.title}
+            </h1>
+            
+            {recipe.description && (
+              <p className="text-lg italic mb-6" style={{ color: 'var(--color-warm-gray)' }}>
+                {recipe.description}
+              </p>
             )}
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="md:col-span-1">
-            <div className="bg-orange-50 p-6 rounded-lg">
-              <h3 className="font-bold text-lg text-orange-800 uppercase mb-4 border-b border-orange-200 pb-2">
-                Ingredientes
-              </h3>
-              <ul className="space-y-3 text-sm">
-                {recipe.ingredients?.map((ing, i) => (
-                  <li key={i} className="flex justify-between border-b border-orange-100 pb-1">
-                    <span className="font-medium">{ing.item}</span>
-                    <span className="text-slate-600">{ing.quantity} {ing.unit}</span>
-                  </li>
-                ))}
-              </ul>
-              {recipe.costing_enabled && recipe.total_cost && (
-                <div className="mt-4 pt-4 border-t border-orange-200">
-                  <div className="flex justify-between text-sm font-bold text-orange-900">
-                    <span>Total:</span>
-                    <span>{recipe.total_cost}€</span>
-                  </div>
-                  <div className="flex justify-between text-xs text-orange-700 mt-1">
-                    <span>Por porción:</span>
-                    <span>{recipe.cost_per_portion}€</span>
-                  </div>
+            {/* Meta badges */}
+            <div className="flex flex-wrap gap-4 pb-6">
+              {recipe.yield && (
+                <div 
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl"
+                  style={{ background: 'var(--color-sand)' }}
+                >
+                  <Users size={18} style={{ color: 'var(--color-charcoal)' }} />
+                  <span className="font-medium">{recipe.yield}</span>
+                </div>
+              )}
+              {recipe.prep_time && (
+                <div 
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl"
+                  style={{ background: 'var(--color-sand)' }}
+                >
+                  <Clock size={18} style={{ color: 'var(--color-charcoal)' }} />
+                  <span className="font-medium">{recipe.prep_time}</span>
+                </div>
+              )}
+              {recipe.costing_enabled && recipe.cost_per_portion && (
+                <div 
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl"
+                  style={{ background: 'rgba(92, 107, 74, 0.2)' }}
+                >
+                  <DollarSign size={18} style={{ color: 'var(--color-olive)' }} />
+                  <span className="font-medium" style={{ color: 'var(--color-olive)' }}>
+                    {recipe.cost_per_portion}€/porción
+                  </span>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="md:col-span-2">
-            <h3 className="font-bold text-lg text-slate-900 uppercase mb-6 border-b border-slate-200 pb-2">
-              Procedimiento
-            </h3>
-            <div className="space-y-8">
-              {recipe.steps?.map((step, i) => (
-                <div key={i} className="flex gap-4">
-                  <div className="flex-none flex flex-col items-center">
-                    <span className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-900 text-white font-bold text-sm mb-2">
-                      {i + 1}
-                    </span>
+          {/* Two Column Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            {/* Ingredients Column */}
+            <div className="lg:col-span-1">
+              <div 
+                className="sticky top-28 rounded-2xl p-6"
+                style={{ background: 'linear-gradient(135deg, rgba(196, 87, 42, 0.08) 0%, rgba(196, 87, 42, 0.03) 100%)' }}
+              >
+                <h3 
+                  className="font-display text-xl font-bold uppercase tracking-wider mb-5 pb-3"
+                  style={{ 
+                    color: 'var(--color-terracotta)',
+                    borderBottom: '2px solid var(--color-terracotta)'
+                  }}
+                >
+                  Ingredientes
+                </h3>
+                
+                <ul className="space-y-3">
+                  {recipe.ingredients?.map((ing, i) => (
+                    <li 
+                      key={i} 
+                      className="flex justify-between items-baseline pb-2"
+                      style={{ borderBottom: '1px dashed var(--color-sand)' }}
+                    >
+                      <span className="font-medium" style={{ color: 'var(--color-charcoal)' }}>
+                        {ing.item}
+                      </span>
+                      <span className="text-sm ml-2" style={{ color: 'var(--color-warm-gray)' }}>
+                        {ing.quantity} {ing.unit}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                {recipe.costing_enabled && recipe.total_cost && (
+                  <div 
+                    className="mt-6 pt-4"
+                    style={{ borderTop: '2px solid var(--color-terracotta)' }}
+                  >
+                    <div className="flex justify-between mb-2">
+                      <span className="font-semibold" style={{ color: 'var(--color-charcoal)' }}>
+                        Costo Total:
+                      </span>
+                      <span className="font-bold text-lg" style={{ color: 'var(--color-terracotta)' }}>
+                        {recipe.total_cost}€
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm" style={{ color: 'var(--color-warm-gray)' }}>
+                        Por porción:
+                      </span>
+                      <span className="font-semibold" style={{ color: 'var(--color-terracotta)' }}>
+                        {recipe.cost_per_portion}€
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex-grow">
-                    <p className="text-slate-700 leading-relaxed mb-3 whitespace-pre-wrap">
-                      {step.description}
-                    </p>
-                    {step.imageUrl && (
-                      <div className="w-48 h-32 rounded-lg overflow-hidden border">
-                        <img src={step.imageUrl} alt={`Paso ${i+1}`} className="w-full h-full object-cover" />
+                )}
+              </div>
+            </div>
+
+            {/* Procedure Column */}
+            <div className="lg:col-span-2">
+              <h3 
+                className="font-display text-xl font-bold uppercase tracking-wider mb-8 pb-3"
+                style={{ 
+                  color: 'var(--color-charcoal)',
+                  borderBottom: '2px solid var(--color-charcoal)'
+                }}
+              >
+                Procedimiento
+              </h3>
+              
+              <div className="space-y-8">
+                {recipe.steps?.map((step, i) => (
+                  <div key={i} className="flex gap-5">
+                    {/* Step number */}
+                    <div className="flex-none">
+                      <div 
+                        className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl"
+                        style={{ 
+                          background: 'var(--color-charcoal)', 
+                          color: 'white' 
+                        }}
+                      >
+                        {i + 1}
                       </div>
-                    )}
+                    </div>
+                    
+                    {/* Step content */}
+                    <div className="flex-grow pt-2">
+                      <p 
+                        className="text-lg leading-relaxed whitespace-pre-wrap mb-4"
+                        style={{ color: 'var(--color-charcoal)' }}
+                      >
+                        {step.description}
+                      </p>
+                      
+                      {step.imageUrl && (
+                        <div 
+                          className="rounded-xl overflow-hidden inline-block"
+                          style={{ maxWidth: '300px' }}
+                        >
+                          <img 
+                            src={step.imageUrl} 
+                            alt={`Paso ${i + 1}`}
+                            className="w-full h-auto"
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>
