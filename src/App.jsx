@@ -6,9 +6,9 @@ import {
   BookOpen, Flame, Star, FileText, AlertTriangle
 } from 'lucide-react';
 
-// Configuración Supabase
+// DESPUÉS (correcto)
 const supabaseUrl = 'https://wqqdhorevqmutqwckkaf.supabase.co';
-const supabaseKey = 'sb_publishable_pT0FbySU0ohx4QdFZCeP9w_Cb16gsYM';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxZ2Rob3JldnFtdXRxd2Nra2FmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1OTc5MzMsImV4cCI6MjA4MDE3MzkzM30.GGLY9ggjCOy4yati0Uu2x6hRQMlbaHddkofdVuJp_UA';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // API ImgBB
