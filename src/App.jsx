@@ -7,14 +7,9 @@ import {
 } from 'lucide-react';
 
 // Configuración Supabase
-const supabaseUrl = 'https://wqgdhorevqmutqwckkaf.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxZ2Rob3JldnFtdXRxd2Nra2FmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1OTc5MzMsImV4cCI6MjA4MDE3MzkzM30.GGLY9ggjCOy4yati0Uu2x6hRQMlbaHddkofdVuJp_UA';
-const supabase = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-  }
-});
+const supabaseUrl = 'https://wqqdhorevqmutqwckkaf.supabase.co';
+const supabaseKey = 'sb_publishable_pT0FbySU0ohx4QdFZCeP9w_Cb16gsYM';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // API ImgBB
 const IMGBB_API_KEY = '3b11e98678de0a1dcc141ecc06b2346b';
@@ -602,7 +597,9 @@ export default function App() {
               {view === 'view' && activeRecipe && (
                 <RecipeViewer 
                   recipe={activeRecipe}
+                  recipes={recipes}
                   onEdit={() => setView('edit')}
+                  onSelectRecipe={(r) => { setActiveRecipe(r); setView('view'); }}
                 />
               )}
             </>
@@ -996,10 +993,56 @@ function RecipeEditor({ initialData, onSave, onCancel, saving }) {
   );
 }
 
-function RecipeViewer({ recipe, onEdit }) {
+function RecipeViewer({ recipe, recipes, onEdit, onSelectRecipe }) {
   const mainImage = recipe.steps?.find(s => s.imageUrl)?.imageUrl;
   const categoryData = CATEGORIES.find(c => c.name === recipe.category);
   const recipeAllergens = (recipe.allergens || []).map(id => ALLERGENS.find(a => a.id === id)).filter(Boolean);
+
+  // Función para buscar receta de preparación por nombre de ingrediente
+  const findPrepRecipe = (ingredientName) => {
+    if (!ingredientName.toLowerCase().includes('prep')) return null;
+    
+    // Extraer el nombre base (sin "prep")
+    const baseName = ingredientName.toLowerCase().replace(/\s*prep\s*/gi, '').trim();
+    
+    // Buscar en recetas de categoría "Preparaciones" o que coincidan con el nombre
+    return recipes?.find(r => {
+      const recipeTitle = r.title?.toLowerCase() || '';
+      return r.id !== recipe.id && (
+        recipeTitle.includes(baseName) ||
+        baseName.includes(recipeTitle.replace(/preparación|prep|base/gi, '').trim())
+      );
+    });
+  };
+
+  // Componente para renderizar ingrediente (con o sin link)
+  const IngredientItem = ({ ing, showCost = false }) => {
+    const prepRecipe = findPrepRecipe(ing.item);
+    
+    return (
+      <li className="flex justify-between items-baseline pb-2" style={{ borderBottom: '1px dashed var(--color-sand)' }}>
+        <span className="font-medium" style={{ color: 'var(--color-charcoal)' }}>
+          {prepRecipe ? (
+            <button
+              onClick={() => onSelectRecipe(prepRecipe)}
+              className="inline-flex items-center gap-1 hover:underline"
+              style={{ color: 'var(--color-terracotta)', cursor: 'pointer', background: 'none', border: 'none', padding: 0, font: 'inherit' }}
+              title={`Ver receta: ${prepRecipe.title}`}
+            >
+              {ing.item}
+              <span style={{ fontSize: '12px' }}>🔗</span>
+            </button>
+          ) : (
+            ing.item
+          )}
+        </span>
+        <span className="text-sm ml-2 flex items-center gap-2" style={{ color: 'var(--color-warm-gray)' }}>
+          {ing.quantity} {ing.unit}
+          {showCost && ing.cost && <span style={{ color: 'var(--color-olive)' }}>({ing.cost}€)</span>}
+        </span>
+      </li>
+    );
+  };
 
   return (
     <div className="fade-in">
@@ -1047,10 +1090,7 @@ function RecipeViewer({ recipe, onEdit }) {
                 <h3 className="font-display text-xl font-bold uppercase tracking-wider mb-5 pb-3" style={{ color: 'var(--color-terracotta)', borderBottom: '2px solid var(--color-terracotta)' }}>Ingredientes</h3>
                 <ul className="space-y-3">
                   {recipe.ingredients?.map((ing, i) => (
-                    <li key={i} className="flex justify-between items-baseline pb-2" style={{ borderBottom: '1px dashed var(--color-sand)' }}>
-                      <span className="font-medium" style={{ color: 'var(--color-charcoal)' }}>{ing.item}</span>
-                      <span className="text-sm ml-2" style={{ color: 'var(--color-warm-gray)' }}>{ing.quantity} {ing.unit}</span>
-                    </li>
+                    <IngredientItem key={i} ing={ing} showCost={recipe.costing_enabled} />
                   ))}
                 </ul>
                 {recipe.costing_enabled && recipe.total_cost && (
@@ -1108,12 +1148,18 @@ function RecipeViewer({ recipe, onEdit }) {
         <div style={{ marginBottom: '20px', pageBreakInside: 'avoid' }}>
           <h3 style={{ color: '#C4572A', borderBottom: '2px solid #C4572A', paddingBottom: '5px', marginBottom: '10px', fontSize: '14pt' }}>Ingredientes</h3>
           <div style={{ columns: 2, columnGap: '30px' }}>
-            {recipe.ingredients?.map((ing, i) => (
-              <div key={i} style={{ breakInside: 'avoid', padding: '3px 0', borderBottom: '1px dotted #ddd' }}>
-                <strong>{ing.item}</strong>
-                <span style={{ float: 'right', color: '#666' }}>{ing.quantity} {ing.unit}</span>
-              </div>
-            ))}
+            {recipe.ingredients?.map((ing, i) => {
+              const isPrepItem = ing.item?.toLowerCase().includes('prep');
+              const prepRecipe = isPrepItem ? findPrepRecipe(ing.item) : null;
+              return (
+                <div key={i} style={{ breakInside: 'avoid', padding: '3px 0', borderBottom: '1px dotted #ddd' }}>
+                  <strong style={{ color: isPrepItem ? '#C4572A' : 'inherit' }}>
+                    {ing.item} {prepRecipe && <span style={{ fontSize: '9pt' }}>🔗</span>}
+                  </strong>
+                  <span style={{ float: 'right', color: '#666' }}>{ing.quantity} {ing.unit}</span>
+                </div>
+              );
+            })}
           </div>
           {recipe.costing_enabled && recipe.total_cost && (
             <div style={{ marginTop: '15px', padding: '10px 15px', background: '#F0FDF4', borderRadius: '8px' }}>
