@@ -709,6 +709,7 @@ function RecipeCard({ recipe, index, onSelect, onEdit, onDelete }) {
   const stepsWithImages = recipe.steps?.filter(s => s.imageUrl) || [];
   const mainImage = stepsWithImages.length > 0 ? stepsWithImages[stepsWithImages.length - 1].imageUrl : null;
   const categoryData = CATEGORIES.find(c => c.name === recipe.category);
+  const hasAllergens = recipe.allergens && recipe.allergens.length > 0;
   
   return (
     <div 
