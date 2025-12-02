@@ -16,6 +16,7 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
   }
 });
 
+
 // API ImgBB
 const IMGBB_API_KEY = '3b11e98678de0a1dcc141ecc06b2346b';
 
@@ -361,7 +362,6 @@ export default function App() {
       const { data, error } = await supabase
         .from('recipes')
         .select('*')
-        .eq('user_id', userId)
         .order('created_at', { ascending: false });
       if (error) throw error;
       setRecipes(data || []);
@@ -371,7 +371,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, []);
 
   useEffect(() => {
     loadRecipes();
